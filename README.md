@@ -2,6 +2,8 @@
 
 A lightweight, zero-dependency, single-file HTML/JS web application to remotely control Panasonic Lumix LX10 and LX15 cameras over Wi-Fi via standard CGI endpoints.
 
+Would you like to test it instantly from your smartphone? [Start web Lumix LX10/LX15 Remote Control in your browser](https://goodstone.altervista.org/lx15/).
+
 ---
 
 ## Features
@@ -36,3 +38,9 @@ Since this application consists of a single standalone HTML file, no build tools
 Clone or download the `index.html` file into your computer or smartphone. If you have a free hosting, you can upload the file.
 
 Or try the live web interface: [Lumix LX10/LX15 Remote Control](https://goodstone.altervista.org/lx15/)
+
+---
+
+## Next steps
+
+Convert it in a webapp. Would you like to help me?
