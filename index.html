@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumix LX10/LX15 Remote Control</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --panel-bg: #1e1e24;
+            --accent-red: #e50914;
+            --accent-red-hover: #b20710;
+            --accent-blue: #0070f3;
+            --text-color: #f0f0f0;
+            --text-dim: #a0a0a0;
+            --border-color: #33333e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.4rem;
+            letter-spacing: 1.5px;
+            margin: 10px 0;
+            color: #fff;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .btn {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 14px 18px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: #2a2a34;
+            border-color: #555;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .custom-command {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .custom-command label {
+            display: block;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .custom-command-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .custom-command input {
+            flex: 1;
+            min-width: 0;
+            background: #0a0a0c;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 11px 12px;
+            font-family: "Courier New", monospace;
+            font-size: 0.85rem;
+        }
+
+        .custom-command input:focus {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 1px;
+        }
+
+        @media (max-width: 480px) {
+            .custom-command-row {
+                flex-direction: column;
+            }
+        }
+
+        .shutter-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .btn-shutter {
+            background-color: var(--accent-red);
+            color: white;
+            border: none;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            box-shadow: 0 0 25px rgba(229, 9, 20, 0.4);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-shutter:hover {
+            background-color: var(--accent-red-hover);
+            box-shadow: 0 0 35px rgba(229, 9, 20, 0.7);
+            transform: scale(1.05);
+        }
+
+        .btn-shutter:active {
+            transform: scale(0.95);
+        }
+
+        .console-container {
+            background: #0a0a0c;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: "Courier New", monospace;
+            font-size: 0.8rem;
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: var(--text-dim);
+            border-bottom: 1px solid #222;
+            padding-bottom: 5px;
+        }
+
+        .console-log {
+            height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-entry.sent {
+            color: #4dabf7;
+        }
+
+        .log-entry.recv {
+            color: #51cf66;
+        }
+
+        .log-entry.err {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>LUMIX LX10/LX15 CONTROL</h1>
+
+    <div class="controls-grid" id="dynamicControls"></div>
+
+    <div class="shutter-wrapper">
+        <button class="btn-shutter" onclick="takePicture()">SHOT</button>
+    </div>
+
+    <div class="custom-command">
+        <label for="customCommand">Manual CGI command<br>(see 'References and useful notes' into this HTML file)</label>
+        <div class="custom-command-row">
+            <input id="customCommand" type="text" placeholder="mode=getstate" aria-label="Comando CGI personalizzato">
+            <button class="btn" onclick="sendCustomCommand()">Invia</button>
+        </div>
+    </div>
+
+    <div class="console-container">
+        <div class="console-header">
+            <span>Console Query & Answers</span>
+            <span style="cursor:pointer;" onclick="clearLog()">[Clear Log]</span>
+        </div>
+        <div id="consoleLog" class="console-log"></div>
+    </div>
+
+    <script>
+        /* REFERENCES and USEFUL NOTES:
+        https://github.com/cleverfox/lumixproto
+        https://github.com/gphoto/libgphoto2/blob/master/camlibs/lumix/lumix.c
+        https://gist.github.com/auberginehill/132104749d2da304a48ebccb90571dfd
+        http://192.168.54.1/cam.cgi?mode=getinfo&type=capability
+        https://github.com/auberginehill/panasonic-html-image-app
+        https://github.com/peci1/lumix-link-desktop
+        */
+
+        const CAMERA_IP = "192.168.54.1";
+        const BASE_HOST = `http://${CAMERA_IP}`;
+        const BASE_URL = `${BASE_HOST}/cam.cgi`;
+        const LUMIX_URL_CAPTURE = `${BASE_URL}?mode=camcmd&value=capture`;
+
+        // DICTIONARY CONFIGURAZIONE PULSANTI
+        const BUTTONS_CONFIG = {
+            "Handshake": "mode=accctrl&type=req_acc&value=0&value2=Lumix%20Link%20Desktop",
+            "REC mode": "mode=camcmd&value=recmode",
+            "Capabilities": "mode=getinfo&type=capability",
+            "Fast tele ": "mode=camcmd&value=tele-fast",
+            "Fast wide": "mode=camcmd&value=wide-fast"
+        };
+
+        function renderDynamicButtons() {
+            const container = document.getElementById('dynamicControls');
+            container.innerHTML = '';
+
+            for (const [label, command] of Object.entries(BUTTONS_CONFIG)) {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.textContent = label;
+                btn.onclick = () => handleButtonClick(command);
+                container.appendChild(btn);
+            }
+        }
+
+        async function handleButtonClick(command) {
+            const url = command.startsWith('http') ? command : `${BASE_URL}?${command}`;
+            await sendCamCmd(url);
+
+        }
+
+        function log(msg, type = 'sent') {
+            const consoleLog = document.getElementById('consoleLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${msg}`;
+            consoleLog.appendChild(entry);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('consoleLog').innerHTML = '';
+        }
+
+        async function sendCamCmd(url) {
+            const timeout = 500;
+
+            const fetchWithTimeout = async (options) => {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeout);
+                try {
+                    const res = await fetch(url, { ...options, signal: controller.signal });
+                    clearTimeout(timer);
+                    return res;
+                } catch (err) {
+                    clearTimeout(timer);
+                    throw err;
+                }
+            };
+
+            log(`REQ [CORS]: ${url}`, 'sent');
+            try {
+                const response = await fetchWithTimeout({ method: 'GET', mode: 'cors' });
+                const text = await response.text();
+                log(`RESP [CORS]: ${text.trim()}`, 'recv');
+                return text;
+            } catch (err) {
+                log(`REQ [NO-CORS Fallback]: ${url}`, 'sent');
+                try {
+                    await fetchWithTimeout({ method: 'GET', mode: 'no-cors' });
+                    log(`RESP [NO-CORS]: Command sent (Opaque Mode)`, 'recv');
+                } catch (e) {
+                    const isTimeout = err.name === 'AbortError' || e.name === 'AbortError';
+                    const msg = isTimeout ? 'Timeout connection (>500ms)' : err.message;
+                    log(`ERR: Connection error (${msg})`, 'err');
+                }
+            }
+        }
+
+        async function takePicture() {
+            await sendCamCmd(LUMIX_URL_CAPTURE);
+        }
+
+        async function sendCustomCommand() {
+            const input = document.getElementById('customCommand');
+            const command = input.value.trim();
+
+            if (!command) {
+                log('ERR: No CGI command specified', 'err');
+                input.focus();
+                return;
+            }
+
+            const url = command.startsWith('http://') || command.startsWith('https://')
+                ? command
+                : `${BASE_URL}?${command.replace(/^\?/, '')}`;
+            await sendCamCmd(url);
+        }
+
+        document.getElementById('customCommand').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendCustomCommand();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', renderDynamicButtons);
+    </script>
+</body>
+
+</html>
